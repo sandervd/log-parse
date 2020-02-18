@@ -1,0 +1,17 @@
+BEGIN {
+	prev_line=$2;
+	sum=0
+}
+{
+	if (prev_line != $2) {
+		if (prev_line) {
+			print sum " " prev_line
+		}
+		sum = 0;
+	}
+	prev_line = $2
+	sum=sum + $1;
+}
+END {
+	print sum " " prev_line
+}

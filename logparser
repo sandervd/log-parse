@@ -1,0 +1,63 @@
+/* vim: set filetype=awk : */ 
+# Convert the regex matches into human readable keys.
+function namedlogline(logparts, parts){
+	# Awk functions can't return arrays, so the return value is passed
+	parts["ip"] = logparts[1];
+	parts["unknown"] = logparts[2];
+        parts["time"] = logparts[3];
+        parts["method"] = logparts[4];
+        parts["uri"] = logparts[5];
+        parts["protocol"] = logparts[6];
+        parts["code"] = logparts[7];
+        parts["number"] = logparts[8];
+        parts["referrer"] = logparts[9];
+        parts["useragent"] = logparts[10];
+}
+
+function includeline(logline) {
+	# Only HTTP 200 OK responses
+	if (logline["code"] != "200")
+		return 0;
+	# Only GET requests
+	if (logline["method"] != "GET") 
+		return 0;
+	# Exclude bots
+	if (match(logline["useragent"], /bot|ELB-HealthChecker|crawler|spider/))
+		return 0;
+	# Exclude images and inline uploads.
+	if (match(logline["uri"], /^(\/core\/|\/sites\/default\/files\/(inline-files|inline-images|ckeditor_files|styles))/) )
+                return 0;
+	# Exclude static assets and old junk.
+	if (match(logline["uri"], /^(\/themes\/|\/modules\/|\/dss-webapp\/|\/svn\/)/) )
+                return 0;
+	return 1;
+}
+
+function remove_querystring(logline) {
+	match(logline["uri"], /^([^?]+).*/, uri)
+	logline["uri"] = uri[1]
+}
+
+function array_dump(array) {
+	print "--------->"
+	for (key in array) {
+                print key "-> " array[key]
+        }
+	print "<---------"
+}
+
+BEGIN {
+}
+{
+	# Split the line of the log into parts.
+	match($0, /^(\S*) -(.*) - \[(\S* \S*)\] \"(\S*) (\S*) (\S*)\" (\S*) (\S*) \"(\S*)\" \"(.*)\"/, matches);
+	namedlogline(matches, logline)
+	if (!includeline(logline)) {
+		next;
+	}
+	remove_querystring(logline)
+	#array_dump(logline);
+	print logline["uri"]
+}
+END {
+}
